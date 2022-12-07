@@ -5,7 +5,12 @@
 #include "ssd1306.h"
 #include "lora.h"
 
+#define MESSAGE_LENGTH 240
+
 SSD1306_t screen;
+uint8_t msg[MESSAGE_LENGTH];
+int packets = 0;
+int rssi = 0;
 
 void screen_init() {
   i2c_master_init(&screen, CONFIG_SDA_GPIO, CONFIG_SCL_GPIO, CONFIG_RESET_GPIO);
@@ -23,8 +28,24 @@ void screen_print(char * str, int page) {
 }
 
 void task_rx(void *p) {
+  char packets_count[64];
+  char rssi_str[64];
+  int len;
   for(;;) {
-    
+    lora_receive();
+    while(lora_received()) {
+      len = lora_receive_packet(msg, MESSAGE_LENGTH);
+      msg[len] = 0;
+
+      rssi = lora_packet_rssi();
+      packets++;
+
+      sprintf(packets_count, "Count: %d", packets);
+      sprintf(rssi_str, "RSSI: %d dBm", rssi);
+      screen_print(packets_count, 0);
+      screen_print(rssi_str, 1);
+    }
+    vTaskDelay(1);
   }
 }
 
@@ -46,5 +67,6 @@ void lora_config_init() {
 void app_main(void) {
   screen_init();
   screen_clear();
-  screen_print("Hola mundo!", 0);
+  // screen_print("Hola mundo!", 0);
+  lora_config_init();
 }
