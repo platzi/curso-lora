@@ -82,7 +82,7 @@ void lora_config_init() {
   lora_set_frequency(915e6);
   lora_enable_crc();
   xTaskCreate(&task_rx, "task_rx", 2048, NULL, 5, &xHandleRXTask);
-  xTaskCreate(&task_tx, "task_tx", 2048, NULL, 5, NULL);
+  // xTaskCreate(&task_tx, "task_tx", 2048, NULL, 5, NULL);
 }
 
 static esp_err_t home_get_handler(httpd_req_t *req) {
@@ -103,6 +103,51 @@ static esp_err_t logo_get_handler(httpd_req_t *req) {
   return ESP_OK;
 }
 
+static esp_err_t api_message_get_handler(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/json");
+
+  // { "message": "" }
+  char res[400] = "{\"message\":\"\"}";
+  sprintf(res, "{\"message\":\"%s\"}", msg);
+
+  httpd_resp_send(req, res, HTTPD_RESP_USE_STRLEN);
+
+  msg[0] = 0;
+
+  return ESP_OK;
+}
+
+static esp_err_t api_send_get_handler(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/json");
+
+  char* buff;
+  size_t buf_len;
+
+  buf_len = httpd_req_get_url_query_len(req) + 1;
+
+  if (buf_len > 1) {
+    buff = malloc(buf_len);
+    // api/send?msg=hello
+    if (httpd_req_get_url_query_str(req, buff, buf_len) == ESP_OK) {
+      char param[240];
+      if (httpd_query_key_value(buff, "msg", param, sizeof(param)) == ESP_OK) {
+        printf("msg: %s\n", (char *)msg);
+        send_msg((char *)param, sizeof(param));
+      }
+    }
+    free(buff);
+  }
+
+  char res[400] = "{\"message\":\"\"}";
+  sprintf(res, "{\"message\":\"%s\"}", msg);
+
+  httpd_resp_send(req, res, HTTPD_RESP_USE_STRLEN);
+
+  msg[0] = 0;
+
+  return ESP_OK;
+}
+
 static const httpd_uri_t home = {
   .uri = "/",
   .method = HTTP_GET,
@@ -115,6 +160,18 @@ static const httpd_uri_t logo = {
   .handler = logo_get_handler
 };
 
+static const httpd_uri_t api_message = {
+  .uri = "/api/message",
+  .method = HTTP_GET,
+  .handler = api_message_get_handler
+};
+
+static const httpd_uri_t api_send = {
+  .uri = "/api/send",
+  .method = HTTP_GET,
+  .handler = api_send_get_handler
+};
+
 void web_server_init() {
   httpd_handle_t server = NULL;
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -122,6 +179,8 @@ void web_server_init() {
   if (httpd_start(&server, &config) == ESP_OK) {
     httpd_register_uri_handler(server, &home);
     httpd_register_uri_handler(server, &logo);
+    httpd_register_uri_handler(server, &api_message);
+    httpd_register_uri_handler(server, &api_send);
     return;
   }
 
