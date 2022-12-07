@@ -38,6 +38,8 @@ void task_rx(void *p) {
       len = lora_receive_packet(msg, MESSAGE_LENGTH);
       msg[len] = 0;
 
+      printf("Receive msg: %s, len: %d\n", msg, len);
+
       rssi = lora_packet_rssi();
       packets++;
 
