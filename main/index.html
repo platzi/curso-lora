@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoRa Chat</title>
+</head>
+<body>
+  <form id="form">
+    <div id="header">
+      <img src="logo.png" alt="logo" width="48px" />
+    </div>
+    <div id="messages">
+    </div>
+    <div id="message">
+      <textarea id="input-text" cols="40" rows="5" placeholder="Escribe tu mensaje aquí..."></textarea>
+      <button id="submit">Enviar</button>
+    </div>
+  </form>
+  <style>
+    :root {
+      --primary: #008f11;
+      --secondary: #c1fba4;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background-color: black;
+      color: var(--primary);
+    }
+    #form {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 2ch;
+      box-sizing: border-box;
+    }
+    #header {
+      display: flex;
+      width: 100%;
+      justify-content: center;
+    }
+    #messages {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2ch;
+      height: 100%;
+      margin-bottom: 2ch;
+      overflow-y: scroll;
+    }
+    .msg {
+      padding: 1ch;
+      border: 1px solid var(--primary);
+      border-left: 1ch solid var(--primary);
+    }
+    .self {
+      border-left: 1px solid var(--primary);
+      border-right: 1ch solid var(--primary);
+    }
+    #message {
+      display: flex;
+      flex-direction: column;
+      gap: 2ch;
+    }
+    #input-text {
+      color: var(--primary);
+      background-color: transparent;
+      border: 1px solid var(--primary);
+    }
+    #input-text::placeholder {
+      color: var(--primary);
+    }
+    #submit {
+      padding: 1ch;
+      font-size: 1.26rem;
+      font-weight: bold;
+      color: black;
+      background-color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+  </style>
+  <script>
+    const formEl = document.getElementById("form");
+    const messagesEl = document.getElementById("messages");
+    const inputTextEl = document.getElementById("input-text");
+
+    const fetchData = async (url) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        return {
+          error: true,
+        };
+      }
+      return res.json();
+    };
+
+    const resetMessages = () => {
+      beforeEl = document.createElement("div");
+      messagesEl.innerHTML = '';
+      messagesEl.appendChild(beforeEl);
+    };
+
+    resetMessages();
+
+    const addMessage = (msg, self = false) => {
+      const classList = ["msg"];
+      if (self) { classList.push(" self"); };
+
+      const messageItem = document.createElement("div");
+
+      messageItem.appendChild(document.createTextNode(msg));
+      messageItem.classList = classList.join("");
+
+      messagesEl.insertBefore(messageItem, beforeEl);
+
+      messagesEl.scrollTo({ top: 0, behavior: "smooth" });
+
+      beforeEl = messageItem;
+    };
+
+    const submit = (e) => {
+      e.preventDefault();
+
+      const message = inputTextEl.value;
+      formEl.reset();
+
+      if (!message) {
+        return true;
+      };
+
+      fetchData(`/api/send?msg=${encodeURIComponent(message)}`);
+      addMessage(message, true);
+    }
+
+    formEl.addEventListener("submit", submit);
+
+    const getMessageURL = `/api/message`;
+
+    const getMessage = async (url) => {
+      const { error, message } = await fetchData(url);
+      if (error || !message) return;
+      addMessage(decodeURIComponent(message), false);
+    };
+
+    setInterval(() => getMessage(getMessageURL), 3000);
+  </script>
+</body>
+</html>
